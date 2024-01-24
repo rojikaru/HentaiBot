@@ -39,3 +39,5 @@ build/
 
 ### Build ###
 out
+
+application.properties
