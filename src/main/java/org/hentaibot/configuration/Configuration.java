@@ -10,11 +10,11 @@ public class Configuration {
 
     private static final Properties properties = new Properties();
     static {
+        try {
         InputStream in = Configuration.class.getClassLoader()
                 .getResourceAsStream("application.properties");
-        try {
             properties.load(in);
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.error("Failed to load properties file");
         }
     }
