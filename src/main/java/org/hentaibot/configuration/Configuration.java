@@ -1,13 +1,10 @@
 package org.hentaibot.configuration;
 
-import org.hentaibot.HentaiBot;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 import org.apache.log4j.Logger;
 
-@SuppressWarnings("CallToPrintStackTrace")
 public class Configuration {
     private static final Logger logger = Logger.getLogger(Configuration.class.getName());
 
