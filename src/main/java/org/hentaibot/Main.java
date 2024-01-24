@@ -14,6 +14,7 @@ public class Main {
             TelegramBotsApi botsApi
                     = new TelegramBotsApi(DefaultBotSession.class);
             botsApi.registerBot(new HentaiBot(botName, botToken));
+
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
