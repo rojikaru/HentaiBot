@@ -1,11 +1,16 @@
 package org.hentaibot.configuration;
 
+import org.hentaibot.HentaiBot;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import org.apache.log4j.Logger;
 
 @SuppressWarnings("CallToPrintStackTrace")
 public class Configuration {
+    private static final Logger logger = Logger.getLogger(Configuration.class.getName());
+
     private static final Properties properties = new Properties();
     static {
         InputStream in = Configuration.class.getClassLoader()
@@ -13,8 +18,7 @@ public class Configuration {
         try {
             properties.load(in);
         } catch (IOException e) {
-            System.err.println("Failed to load properties file");
-            e.printStackTrace();
+            logger.error("Failed to load properties file");
         }
     }
 

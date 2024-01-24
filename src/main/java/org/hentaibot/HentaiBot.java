@@ -1,5 +1,6 @@
 package org.hentaibot;
 
+import org.apache.log4j.Logger;
 import org.hentaibot.dtos.Rule34Dto;
 import org.hentaibot.network.Client;
 import org.hentaibot.network.HentaiQueries;
@@ -22,11 +23,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-@SuppressWarnings("CallToPrintStackTrace")
 public class HentaiBot extends TelegramLongPollingBot {
     private static final Random random = new Random();
     private static final List<String> picExtensions =
             Arrays.asList(".jpg", ".jpeg", ".png", ".webp", ".avif", ".jfif");
+    private static final Logger logger = Logger.getLogger(HentaiBot.class.getName());
 
     private static final HentaiQueries hentaiClient = Client.getNsfwClient();
 
@@ -40,15 +41,14 @@ public class HentaiBot extends TelegramLongPollingBot {
     // received message
     @Override
     public void onUpdateReceived(Update update) {
+        String chatId = update.getMessage().getChatId().toString();
         if (!update.hasMessage() || !update.getMessage().hasText()) {
-            // send message indicating error (optional)
+            respondWithText(chatId, "I don't understand you. " +
+                    "For list of all supported commands, try /help");
             return;
         }
 
-        String userMsg = update.getMessage().getText(),
-                chatId = update.getMessage().getChatId().toString(),
-                respText;
-
+        String userMsg = update.getMessage().getText(), respText;
         switch (userMsg) {
             case "/start" -> respText = """
                     Hi! I'm HentaiBot. I can send you some spicy anime pics.
@@ -72,17 +72,7 @@ public class HentaiBot extends TelegramLongPollingBot {
             default -> respText = "Invalid command. For list of all supported commands, try /help";
         }
 
-        if (respText != null) {
-            try {
-                SendMessage response = new SendMessage();
-                response.setChatId(chatId);
-                response.setText(respText);
-
-                execute(response);
-            } catch (TelegramApiException e) {
-                System.err.println(e.getMessage());
-            }
-        }
+        respondWithText(chatId, respText);
     }
 
     @Override
@@ -103,8 +93,11 @@ public class HentaiBot extends TelegramLongPollingBot {
                                     var picDto = response.body() != null
                                             ? response.body().getFirst()
                                             : null;
+
+                                    logger.info("\nResponse:\n" + picDto + "\n");
+
                                     if (picDto == null) {
-                                        respondNsfw(chatId);
+                                        onFailure(call, new IOException("Response body is null"));
                                         return;
                                     }
 
@@ -114,18 +107,15 @@ public class HentaiBot extends TelegramLongPollingBot {
 
                                 @Override
                                 public void onFailure(Call<List<Rule34Dto>> call, Throwable throwable) {
-                                    System.err.println(throwable.getMessage());
-                                    throwable.printStackTrace();
-
-                                    respondNsfw(chatId);
+                                    logger.error(throwable.getMessage());
+                                    respondWithText(chatId, "Failed to get hentai. Try again later");
                                 }
                             }
                     );
 
 
-        } catch (Exception e) {
-            System.err.println(e.getMessage());
-            e.printStackTrace();
+        } catch (Exception ex) {
+            logger.error(ex.getMessage());
         }
     }
 
@@ -144,13 +134,14 @@ public class HentaiBot extends TelegramLongPollingBot {
             else if (picExtensions.stream().anyMatch(pathToSource::endsWith))
                 respondWithPicture(chatId, file);
             else respondWithVideo(chatId, file);
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
-            e.printStackTrace();
+        } catch (IOException ex) {
+            logger.error(ex.getMessage());
         }
     }
 
     public void respondWithPicture(String chatId, InputFile pic) {
+        if (pic == null || chatId == null || chatId.isBlank()) return;
+
         SendPhoto response = new SendPhoto();
         response.setChatId(chatId);
         response.setPhoto(pic);
@@ -158,12 +149,13 @@ public class HentaiBot extends TelegramLongPollingBot {
         try {
             execute(response);
         } catch (TelegramApiException ex) {
-            System.err.println("Picture can't be sent (" + ex.getMessage() + ")");
-            ex.printStackTrace();
+            logger.error("Picture can't be sent (" + ex.getMessage() + ")");
         }
     }
 
     public void respondWithGif(String chatId, InputFile file) {
+        if (file == null || chatId == null || chatId.isBlank()) return;
+
         SendAnimation response = new SendAnimation();
         response.setChatId(chatId);
         response.setAnimation(file);
@@ -171,12 +163,13 @@ public class HentaiBot extends TelegramLongPollingBot {
         try {
             execute(response);
         } catch (TelegramApiException ex) {
-            System.err.println("GIF can't be sent (" + ex.getMessage() + ")");
-            ex.printStackTrace();
+            logger.error("GIF can't be sent (" + ex.getMessage() + ")");
         }
     }
 
     public void respondWithVideo(String chatId, InputFile file) {
+        if (file == null || chatId == null || chatId.isBlank()) return;
+
         SendVideo response = new SendVideo();
         response.setChatId(chatId);
         response.setVideo(file);
@@ -184,8 +177,22 @@ public class HentaiBot extends TelegramLongPollingBot {
         try {
             execute(response);
         } catch (TelegramApiException ex) {
-            System.err.println("Video can't be sent (" + ex.getMessage() + ")");
-            ex.printStackTrace();
+            logger.error("Video can't be sent (" + ex.getMessage() + ")");
+        }
+    }
+
+    public void respondWithText(String chatId, String responseText) {
+        if (responseText == null || responseText.isBlank() ||
+                chatId == null || chatId.isBlank()) return;
+
+        SendMessage response = new SendMessage();
+        response.setChatId(chatId);
+        response.setText(responseText);
+
+        try {
+            execute(response);
+        } catch (TelegramApiException ex) {
+            logger.error("Text can't be sent (" + ex.getMessage() + ")");
         }
     }
 }

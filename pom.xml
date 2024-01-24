@@ -28,16 +28,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>com.heroku.sdk</groupId>
-                <artifactId>heroku-maven-plugin</artifactId>
-                <version>3.0.3</version>
-                <configuration>
-                    <jdkVersion>17</jdkVersion>
-                    <appName>my-one-million-dollar-idea</appName>
-                    <logProgress>true</logProgress>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
@@ -58,6 +48,18 @@
             <groupId>com.squareup.retrofit2</groupId>
             <artifactId>converter-gson</artifactId>
             <version>2.9.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.11</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.reload4j</groupId>
+            <artifactId>reload4j</artifactId>
+            <version>1.2.22</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>
