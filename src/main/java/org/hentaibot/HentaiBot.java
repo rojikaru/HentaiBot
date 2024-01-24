@@ -7,6 +7,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendAnimation;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -14,13 +15,18 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+@SuppressWarnings("CallToPrintStackTrace")
 public class HentaiBot extends TelegramLongPollingBot {
     private static final Random random = new Random();
+    private static final List<String> picExtensions =
+            Arrays.asList(".jpg", ".jpeg", ".png", ".webp", ".avif", ".jfif");
 
     private static final HentaiQueries hentaiClient = Client.getNsfwClient();
 
@@ -31,12 +37,6 @@ public class HentaiBot extends TelegramLongPollingBot {
         this.botName = botName;
     }
 
-//    private static final HashSet<String> AllowedMethods = new HashSet<>(
-//            Arrays.asList("/start", "/help", "/hentai", "/sfw")
-//    );
-
-    private static final String lookingForPic = "Ok. Trying to find a nice pic for you...";
-
     // received message
     @Override
     public void onUpdateReceived(Update update) {
@@ -45,31 +45,23 @@ public class HentaiBot extends TelegramLongPollingBot {
             return;
         }
 
-        String  userMsg = update.getMessage().getText(),
+        String userMsg = update.getMessage().getText(),
                 chatId = update.getMessage().getChatId().toString(),
                 respText;
 
         switch (userMsg) {
-            case "/start" -> {
-                respText = """
-                        Hi! // Welcome description
-                        List of commands available for now:
-                        /start
-                        /help
-                        /hentai
-                        /sfw
-                        """;
-            }
-            case "/help" -> {
-                respText = """
-                            List of commands available for now:
-                            /start
-                            /help
-                            /hentai
-                            /sfw
-                            """;
-            }
-            case "/sfw" -> {
+            case "/start" -> respText = """
+                    Hi! I'm HentaiBot. I can send you some spicy anime pics.
+                    Use me if you're 18+.
+                    For list of all supported commands, try /help
+                    """;
+            case "/help" -> respText = """
+                    List of commands available for now:
+                    /help
+                    /hentai
+                    /anime
+                    """;
+            case "/anime", "/sfw" -> {
                 respText = null;
                 respondSfw(chatId);
             }
@@ -77,9 +69,7 @@ public class HentaiBot extends TelegramLongPollingBot {
                 respText = null;
                 respondNsfw(chatId);
             }
-            default -> {
-                respText = "Invalid command. For list of all supported commands, try /help";
-            }
+            default -> respText = "Invalid command. For list of all supported commands, try /help";
         }
 
         if (respText != null) {
@@ -101,33 +91,33 @@ public class HentaiBot extends TelegramLongPollingBot {
     }
 
     public void respondNsfw(String chatId) {
+        int pageId = random.nextInt(1, 3970);
+
         try {
             hentaiClient
-                    .getNsfw("hentai", random.nextInt(1, 6001))
+                    .getNsfw("anime", pageId)
                     .enqueue(
                             new Callback<>() {
                                 @Override
                                 public void onResponse(Call<List<Rule34Dto>> call, Response<List<Rule34Dto>> response) {
-                                    if (!response.isSuccessful())
-                                        onFailure(call, new Exception("Unsuccessful request"));
-
-                                    var picDto = response.body().get(0);
-                                    var path = picDto.getFile_url();
-
-                                    try {
-                                        var url = URI.create(path).toURL();
-                                        var stream = url.openConnection().getInputStream();
-                                        InputFile file = new InputFile(stream, picDto.getImage());
-                                        respondPicture(chatId, file);
-                                    } catch (IOException e) {
-                                        throw new RuntimeException(e);
+                                    var picDto = response.body() != null
+                                            ? response.body().getFirst()
+                                            : null;
+                                    if (picDto == null) {
+                                        respondNsfw(chatId);
+                                        return;
                                     }
+
+                                    var path = picDto.getFile_url();
+                                    respondWithContent(chatId, path);
                                 }
 
                                 @Override
                                 public void onFailure(Call<List<Rule34Dto>> call, Throwable throwable) {
                                     System.err.println(throwable.getMessage());
                                     throwable.printStackTrace();
+
+                                    respondNsfw(chatId);
                                 }
                             }
                     );
@@ -140,10 +130,27 @@ public class HentaiBot extends TelegramLongPollingBot {
     }
 
     public void respondSfw(String chatId) {
-        //throw new Exception();
+
     }
 
-    public void respondPicture(String chatId, InputFile pic) {
+    public void respondWithContent(String chatId, @NotNull String pathToSource) {
+        try {
+            var url = URI.create(pathToSource).toURL();
+            var stream = url.openConnection().getInputStream();
+            InputFile file = new InputFile(stream, pathToSource);
+
+            if (pathToSource.endsWith(".gif"))
+                respondWithGif(chatId, file);
+            else if (picExtensions.stream().anyMatch(pathToSource::endsWith))
+                respondWithPicture(chatId, file);
+            else respondWithVideo(chatId, file);
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void respondWithPicture(String chatId, InputFile pic) {
         SendPhoto response = new SendPhoto();
         response.setChatId(chatId);
         response.setPhoto(pic);
@@ -152,6 +159,32 @@ public class HentaiBot extends TelegramLongPollingBot {
             execute(response);
         } catch (TelegramApiException ex) {
             System.err.println("Picture can't be sent (" + ex.getMessage() + ")");
+            ex.printStackTrace();
+        }
+    }
+
+    public void respondWithGif(String chatId, InputFile file) {
+        SendAnimation response = new SendAnimation();
+        response.setChatId(chatId);
+        response.setAnimation(file);
+
+        try {
+            execute(response);
+        } catch (TelegramApiException ex) {
+            System.err.println("GIF can't be sent (" + ex.getMessage() + ")");
+            ex.printStackTrace();
+        }
+    }
+
+    public void respondWithVideo(String chatId, InputFile file) {
+        SendVideo response = new SendVideo();
+        response.setChatId(chatId);
+        response.setVideo(file);
+
+        try {
+            execute(response);
+        } catch (TelegramApiException ex) {
+            System.err.println("Video can't be sent (" + ex.getMessage() + ")");
             ex.printStackTrace();
         }
     }

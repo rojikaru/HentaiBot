@@ -57,4 +57,11 @@ public class Rule34Dto {
     public void setImage(String image) {
         this.image = image;
     }
+
+    @Override
+    public String toString() {
+        return "File url: " + file_url +
+                "\nTags: " + tags +
+                "\nImage: " + image;
+    }
 }
