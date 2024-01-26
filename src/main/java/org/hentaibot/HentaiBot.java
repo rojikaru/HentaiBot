@@ -2,7 +2,10 @@ package org.hentaibot;
 
 import org.apache.log4j.Logger;
 import org.hentaibot.dtos.Rule34Dto;
+import org.hentaibot.dtos.WaifuDto;
+import org.hentaibot.network.AnimeWaifuQueries;
 import org.hentaibot.network.Client;
+import org.hentaibot.network.ClientSFW;
 import org.hentaibot.network.HentaiQueries;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendAnimation;
@@ -30,7 +33,7 @@ public class HentaiBot extends TelegramLongPollingBot {
     private static final Logger logger = Logger.getLogger(HentaiBot.class.getName());
 
     private static final HentaiQueries hentaiClient = Client.getNsfwClient();
-
+    private static final AnimeWaifuQueries animeClient = ClientSFW.getSfwClient();
     private final String botName;
 
     public HentaiBot(String botName, String botToken) {
@@ -85,7 +88,7 @@ public class HentaiBot extends TelegramLongPollingBot {
 
         try {
             hentaiClient
-                    .getNsfw("anime", pageId)
+                    .getNsfw("female", pageId)
                     .enqueue(
                             new Callback<>() {
                                 @Override
@@ -120,6 +123,33 @@ public class HentaiBot extends TelegramLongPollingBot {
     }
 
     public void respondSfw(String chatId) {
+         final String[] categories = new String[]{"waifu", "neko", "shinobu", "megumin", "hug", "awoo", "kiss", "lick", "smug", "blush", "smile", "wave", "nom", "glomp", "slap", "kill", "happy", "wink", "poke", "dance", "cringe"};
+        String urlCategory = categories[random.nextInt(0, categories.length)];
+        animeClient
+                .getSFW(urlCategory)
+                .enqueue(
+                        new Callback<>() {
+                            @Override
+                            public void onResponse(Call<WaifuDto> call, Response<WaifuDto> response) {
+                                var picSDto = response.body();
+                                logger.info("\nResponse:\n" + picSDto.getUrl() + "\n");
+
+                                if (picSDto == null) {
+                                    onFailure(call, new IOException("Response body is null"));
+                                    return;
+                                }
+
+                                var path = picSDto.getUrl();
+                                respondWithContent(chatId, path);
+                            }
+
+                            @Override
+                            public void onFailure(Call<WaifuDto> call, Throwable throwable) {
+                                logger.error(throwable.getMessage());
+                                respondWithText(chatId, "Failed to get hentai. Try again later");
+                            }
+                        }
+                );
 
     }
 
@@ -173,6 +203,7 @@ public class HentaiBot extends TelegramLongPollingBot {
         SendVideo response = new SendVideo();
         response.setChatId(chatId);
         response.setVideo(file);
+
 
         try {
             execute(response);
