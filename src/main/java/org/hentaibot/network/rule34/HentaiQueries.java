@@ -1,4 +1,4 @@
-package org.hentaibot.network;
+package org.hentaibot.network.rule34;
 
 
 import org.hentaibot.dtos.Rule34Dto;
@@ -13,5 +13,5 @@ public interface HentaiQueries {
     Call<List<Rule34Dto>> getNsfw(
             @Query("tags") String tags,
             @Query("pid") int pageId
-            );
+    );
 }

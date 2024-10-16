@@ -1,8 +1,5 @@
 package org.hentaibot.dtos;
 
-// DTO - data transfer object
-
-
 public class Rule34Dto {
     private String file_url;
     private String tags;
@@ -17,7 +14,7 @@ public class Rule34Dto {
     }
 
     public String getTags() {
-        return tags;
+        return this.tags;
     }
 
     public void setTags(String tags) {
@@ -25,7 +22,7 @@ public class Rule34Dto {
     }
 
     public String getImage() {
-        return image;
+        return this.image;
     }
 
     public void setImage(String image) {
@@ -34,8 +31,8 @@ public class Rule34Dto {
 
     @Override
     public String toString() {
-        return "File url: " + file_url +
-                "\nTags: " + tags +
-                "\nImage: " + image;
+        return "File url: " + this.file_url +
+                "\nTags: " + this.tags +
+                "\nImage: " + this.image;
     }
 }
