@@ -1,17 +1,18 @@
-# Use an official OpenJDK runtime as a parent image
-FROM maven:3.9.6-eclipse-temurin-21-alpine
-
-# Create new app directory
-RUN mkdir /app
+# Use an maven image as a base image
+FROM maven:3.9.9-eclipse-temurin-23-alpine
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the project files
-COPY /src ./src
-COPY pom.xml .
+COPY pom.xml ./
+RUN mvn dependency:resolve
 
-# Compile the Java source code
+COPY . .
+
+# Install dependencies
+RUN mvn clean install
+
+# Compile the code
 RUN mvn clean compile assembly:single
 
 # Specify the command to run on container start
